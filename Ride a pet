@@ -1,0 +1,179 @@
+
+-- Egg Finder Pro
+-- LocalScript داخل StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "EggFinderPro"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.fromOffset(55, 55)
+toggle.Position = UDim2.new(0, 20, 0.4, 0)
+toggle.Text = "🎃"
+toggle.TextSize = 28
+toggle.BackgroundColor3 = Color3.fromRGB(35, 120, 65)
+toggle.TextColor3 = Color3.new(1, 1, 1)
+toggle.Parent = gui
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.fromOffset(320, 390)
+panel.Position = UDim2.new(0.5, -160, 0.5, -195)
+panel.BackgroundColor3 = Color3.fromRGB(25, 30, 35)
+panel.Visible = false
+panel.Parent = gui
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -45, 0, 45)
+title.Position = UDim2.fromOffset(10, 0)
+title.BackgroundTransparency = 1
+title.Text = "🥚 Egg Finder Pro"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 20
+title.Parent = panel
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(35, 35)
+close.Position = UDim2.new(1, -40, 0, 5)
+close.Text = "X"
+close.TextSize = 18
+close.BackgroundColor3 = Color3.fromRGB(170, 50, 50)
+close.TextColor3 = Color3.new(1, 1, 1)
+close.Parent = panel
+
+local search = Instance.new("TextBox")
+search.Size = UDim2.new(1, -20, 0, 40)
+search.Position = UDim2.fromOffset(10, 50)
+search.PlaceholderText = "اكتب egg أو بيض..."
+search.Text = ""
+search.ClearTextOnFocus = false
+search.TextSize = 16
+search.BackgroundColor3 = Color3.fromRGB(45, 50, 55)
+search.TextColor3 = Color3.new(1, 1, 1)
+search.PlaceholderColor3 = Color3.fromRGB(190, 190, 190)
+search.Parent = panel
+
+local results = Instance.new("ScrollingFrame")
+results.Size = UDim2.new(1, -20, 1, -105)
+results.Position = UDim2.fromOffset(10, 100)
+results.BackgroundColor3 = Color3.fromRGB(35, 40, 45)
+results.BorderSizePixel = 0
+results.ScrollBarThickness = 6
+results.CanvasSize = UDim2.new()
+results.Parent = panel
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 5)
+layout.Parent = results
+
+local function clearResults()
+    for _, child in ipairs(results:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    results.CanvasPosition = Vector2.zero
+end
+
+local function findPart(obj)
+    if obj:IsA("BasePart") then
+        return obj
+    end
+    if obj:IsA("Model") then
+        return obj.PrimaryPart
+            or obj:FindFirstChildWhichIsA("BasePart", true)
+    end
+    return nil
+end
+
+local function selectEgg(obj)
+    local part = findPart(obj)
+    if not part then
+        return
+    end
+
+    local old = gui:FindFirstChild("EggHighlight")
+    if old then
+        old:Destroy()
+    end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "EggHighlight"
+    highlight.Adornee = obj
+    highlight.FillColor = Color3.fromRGB(0, 255, 90)
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.FillTransparency = 0.45
+    highlight.Parent = gui
+
+    local character = player.Character
+    if character then
+        character:PivotTo(
+            CFrame.new(part.Position + Vector3.new(0, 5, 0))
+        )
+    end
+end
+
+local function updateSearch()
+    clearResults()
+
+    local query = string.lower(search.Text)
+    if query == "" then
+        return
+    end
+
+    local count = 0
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if count >= 150 then
+            break
+        end
+
+        local name = string.lower(obj.Name)
+        local isEgg = name:find("egg", 1, true)
+            or name:find("بيض", 1, true)
+
+        if isEgg and name:find(query, 1, true) then
+            if findPart(obj) then
+                count += 1
+
+                local button = Instance.new("TextButton")
+                button.Size = UDim2.new(1, -8, 0, 38)
+                button.BackgroundColor3 = Color3.fromRGB(50, 100, 65)
+                button.TextColor3 = Color3.new(1, 1, 1)
+                button.TextSize = 15
+                button.Text = "🥚  " .. obj.Name
+                button.Parent = results
+
+                button.Activated:Connect(function()
+                    selectEgg(obj)
+                end)
+            end
+        end
+    end
+
+    results.CanvasSize = UDim2.fromOffset(
+        0, layout.AbsoluteContentSize.Y + 10
+    )
+end
+
+toggle.Activated:Connect(function()
+    panel.Visible = not panel.Visible
+end)
+
+close.Activated:Connect(function()
+    panel.Visible = false
+end)
+
+search:GetPropertyChangedSignal("Text"):Connect(updateSearch)
+
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    results.CanvasSize = UDim2.fromOffset(
+        0, layout.AbsoluteContentSize.Y + 10
+    )
+end)
